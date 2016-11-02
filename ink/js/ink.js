@@ -12,8 +12,8 @@ inkManager.setDefaultDrawingAttributes(drawingAttributes);
 // Create a global object for managing canvases
 var ink = {
     draw:{
-        canvas:null,
-        context:null
+        canvas: null,
+        context: null
     },
     select: { //TODO: implement the Selection Canvas
         canvas: null,
@@ -52,11 +52,11 @@ function inkMode() {
 // Test the array of results bounding boxes
 // Draws a single stroke into a specified canvas 2D context, with a specified color and width.
 function renderStroke(stroke, color, width, ctx) {
-    ctx.save();
 
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
+    ctx.save();               // 
+    ctx.beginPath();          //
+    ctx.strokeStyle = color;  //
+    ctx.lineWidth = width;    //
 
     var first = true;
     stroke.getRenderingSegments().forEach(function (segment) {
@@ -98,12 +98,11 @@ function hitTest(tx, ty) {
 }// Tests the array of results bounding box
 
 function renderAllStrokes() {
-    //selContext.clearRect(0, 0, selCanvas.width, selCanvas.height);
+
+    // Clear the last context
     ink.draw.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
-    //hlContext.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
 
-    //renderPaper();
-
+    // Get all the strokes from the InkManager
     inkManager.getStrokes().forEach(function (stroke) {
         var att = stroke.drawingAttributes;
         var color = Windows.UI.Colors.black;
@@ -127,24 +126,25 @@ function renderAllStrokes() {
 // We will accept touch down or mouse right down as the start of a touch.
 function handlePointerDown(evt) {
     if ((evt.pointerType === "pen") || ((evt.pointerType === "mouse") && (evt.button === 0))) {
-        // Anchor and clear any current selection.
-        //anchorSelection();
+        
         var pt = { x: 0.0, y: 0.0 };
         inkManager.selectWithLine(pt, pt);
-
         pt = evt.currentPoint;
+
         /*
         if (pt.properties.isEraser) { // The back side of a pen, which we treat as an eraser
             tempEraseMode();
         } else {
             restoreMode();
         }
-*/
+        */
+
         context.beginPath();
         context.moveTo(pt.rawPosition.x, pt.rawPosition.y);
 
         inkManager.processPointerDown(pt);
         penID = evt.pointerId;
+
     } else if (evt.pointerType === "touch") {
         // Start the processing of events related to this pointer as part of a gesture.
         // In this sample we are interested in MSGestureTap event, which we use to show alternates. See handleTap event handler. 
@@ -181,7 +181,6 @@ function handlePointerUp(evt) {
         if (inkManager.mode === Windows.UI.Input.Inking.InkManipulationMode.selecting) {
             detachSelection(rect);
         }
-
         renderAllStrokes();
     }
 }
@@ -200,7 +199,6 @@ function handlePointerOut(evt) {
     }
 }
 
-
 // Setup the application
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -212,7 +210,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ink.draw.canvas.gestureObject.target = ink.draw.canvas;
 
     ink.draw.context = ink.draw.canvas.getContext("2d");
-    ink.draw.context.lineWidth = 2;
+    ink.draw.context.lineWidth = 5;
     ink.draw.context.strokeStyle = "Black";
     ink.draw.context.lineCap = "round";
     ink.draw.context.lineJoin = "round";
