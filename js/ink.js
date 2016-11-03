@@ -13,6 +13,7 @@ function InkManager(canvas) {
         ? new Windows.UI.Input.Inking.InkManager
         : new SignaturePad(canvas);
 
+    this.manager = manager;
     if (this.isWRT) {
         attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
         var stroke = attrs.size;
@@ -42,7 +43,17 @@ InkManager.prototype = {
     processPointerDown: function() {},
     processPointerUpdate: function() {},
     processPointerUp: function() {},
-    selectWithLine: function() {}
+    selectWithLine: function() {},
+    set color(value) {
+        if (this.isWRT) {
+            this._color = value;
+        } else {
+            this.manager.penColor = value;
+        }
+    },
+    get color() {
+        return this.isWRT ? this._color : this.manager.penColor;
+    }
 };
 
 // Setup the application.
@@ -95,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Change the color and width in the default (used for new strokes) to the values
     // currently set in the current context.
     function setDefaults() {
-        
+
         var strokeSize = attrs.size;
         strokeSize.width = strokeSize.height = context.lineWidth;
         attrs.size = strokeSize;
@@ -165,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var width = strokeSize.width;
             var ctx = ink.draw.context;
             renderStroke(stroke, color, width, ctx);
-            
+
         });
     }
 
@@ -183,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleColorChange(evt) {
-        ink.draw.context.strokeStyle = evt.srcElement.value;
+        inkManager.color = evt.srcElement.value;
     }
 
     // Handle Pointer events
@@ -241,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (evt.pointerId === penID) {
             penID = -1;
             var pt = evt.currentPoint;
-            context.strokeStyle = inputColor.value;
+            context.strokeStyle = inkManager.color;
             context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
             context.stroke();
             context.closePath();
@@ -290,7 +301,6 @@ document.addEventListener('DOMContentLoaded', function () {
     canvas.setAttribute('height', inkCanvas.offsetHeight);
 
     context.lineWidth = 5;
-    context.strokeStyle = inputColor.value;
     context.lineCap = 'round';
     context.lineJoin = 'round';
 
@@ -298,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ink.draw.context = context;
 
     var inkManager = new InkManager(canvas);
+    inkManager.color = inputColor.value;
 
     // Initialize the drawing canvas
     canvas.gestureObject = inkManager.isWRT ? new MSGesture : {};
