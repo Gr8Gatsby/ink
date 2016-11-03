@@ -123,6 +123,8 @@ document.addEventListener('DOMContentLoaded', function () {
         inkManager.getStrokes().forEach(function (stroke, index, array) {
             var rgba = hexStrToRGBA(inputColor.value);
             var att = stroke.drawingAttributes
+            var strokeSize = att.size;
+            var width = strokeSize.width;
 
             // Find the most recent stroke
             if (index === (array.length - 1)) {
@@ -144,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
             //  var w = width - (hl ? 3 : 1);
             //  renderStroke(stroke, stripe, w, ctx);
             //} else {
-                renderStroke(stroke, color, width, ctx);
+                renderStroke(stroke, att.color, width, ctx);
             //}
         });
     }
