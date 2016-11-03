@@ -13,7 +13,7 @@ function InkManager(canvas) {
         var context = canvas.getContext('2d');
 
         attrs.size = stroke;
-        attrs.color = Windows.UI.Colors.black;
+        // attrs.color = Windows.UI.Colors.black;
         attrs.fitToCurve = true;
         stroke.width = stroke.height = context.lineWidth;
 
@@ -42,6 +42,23 @@ InkManager.prototype = {
 // Setup the application.
 document.addEventListener('DOMContentLoaded', function () {
     // helper functions
+
+    // Set the color (and alpha) of a stroke.  Return true if we actually changed it.
+    // Note that we cannot just set the color in stroke.drawingAttributes.color.
+    // The stroke API supports get and put operations for drawingAttributes,
+    // but we must execute those operations separately, and change any values
+    // inside drawingAttributes between those operations.
+    function colorStroke(stroke, color) {
+        var att = stroke.drawingAttributes;
+        var clr = toColorStruct(color);
+        if (att.color !== clr) {
+            att.color = clr;
+            stroke.drawingAttributes = att;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     // Check to see if input is inside of the Canvas for drawing
     function inRect(x, y, rect) {
@@ -103,21 +120,32 @@ document.addEventListener('DOMContentLoaded', function () {
         ink.draw.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
 
         // Get all the strokes from the InkManager
-        inkManager.getStrokes().forEach(function(stroke) {
-            var att = stroke.drawingAttributes;
-            var color = stroke.drawingAttributes.color;
-            var strokeSize = att.size;
-            var width = strokeSize.width;
-            var hl = stroke.drawingAttributes.drawAsHighlighter;
-            var ctx = ink.draw.context;
-            if (stroke.selected) {
-                renderStroke(stroke, color, width * 2, ctx);
-                var stripe = hl ? 'Azure' : 'White';
-                var w = width - (hl ? 3 : 1);
-                renderStroke(stroke, stripe, w, ctx);
-            } else {
-                renderStroke(stroke, color, width, ctx);
+        inkManager.getStrokes().forEach(function (stroke, index, array) {
+            var rgba = hexStrToRGBA(inputColor.value);
+            var att = stroke.drawingAttributes
+
+            // Find the most recent stroke
+            if (index === (array.length - 1)) {
+                // Copy the drawingAttributes
+                att = stroke.drawingAttributes;
+                // Set the color
+                att.color = rgba;
+
+                stroke.drawingAttributes = att;
             }
+            //var att = stroke.drawingAttributes;
+            //
+            //att.color = rgba;
+            //var color = rgba;
+            var ctx = ink.draw.context;
+            //if (stroke.selected) {
+            //  renderStroke(stroke, color, width * 2, ctx);
+            //  var stripe = hl ? 'Azure' : 'White';
+            //  var w = width - (hl ? 3 : 1);
+            //  renderStroke(stroke, stripe, w, ctx);
+            //} else {
+                renderStroke(stroke, color, width, ctx);
+            //}
         });
     }
 
@@ -134,6 +162,11 @@ document.addEventListener('DOMContentLoaded', function () {
             inkManager.selectWithLine(pt, pt);
             pt = evt.currentPoint;
 
+            var strokes = inkManager.getStrokes();
+            if (strokes.length > 0) {
+
+            }
+            //context.strokeStyle = inputColor.value;
             context.beginPath();
             context.moveTo(pt.rawPosition.x, pt.rawPosition.y);
 
@@ -166,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (evt.pointerId === penID) {
             penID = -1;
             var pt = evt.currentPoint;
-            context.strokeStyle = inputColor.value;
+            //context.strokeStyle = inputColor.value;
             context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
             context.stroke();
             context.closePath();
