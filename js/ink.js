@@ -248,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var inkManager = new InkManager(canvas);
     inkManager.color = inputColor.value;
+    inkManager.context.strokeStyle = inkManager.color;
 
     // Initialize the drawing canvas
     canvas.gestureObject = inkManager.isWRT ? new MSGesture : {};
