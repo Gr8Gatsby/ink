@@ -42,6 +42,8 @@ InkManager.prototype = {
 // Setup the application.
 document.addEventListener('DOMContentLoaded', function () {
     // helper functions
+
+    // Check to see if input is inside of the Canvas for drawing
     function inRect(x, y, rect) {
         return ((rect.x <= x) && (x < (rect.x + rect.width)) &&
                 (rect.y <= y) && (y < (rect.y + rect.height)));
@@ -55,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.strokeStyle = color;
         ctx.lineWidth = width;
 
+        console.log('renderStroke: rgb color: r = ' + color.r + ' g = ' + color.g + ' b = ' + color.b);
         var first = true;
         stroke.getRenderingSegments().forEach(function (segment) {
             if (first) {
@@ -119,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleColorChange(evt) {
-        ink.draw.context.strokeStyle = evt.srcElement.value;
+        // ink.draw.context.strokeStyle = evt.srcElement.value;
     }
 
     // Handle Pointer events
@@ -163,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (evt.pointerId === penID) {
             penID = -1;
             var pt = evt.currentPoint;
+            context.strokeStyle = inputColor.value;
             context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
             context.stroke();
             context.closePath();
