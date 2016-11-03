@@ -2,6 +2,7 @@
 {
     -ms-content-zooming: none;
     touch-action: none;
+    overflow: hidden;
 }
 
 body
@@ -12,18 +13,22 @@ body
 html {
     -ms-content-zooming: none;
     overflow: hidden;
+    height:100%;
+    width:100%;
 }
 body { 
     touch-action: none;
     overflow:hidden;
+    height:100%;
+    width:100%;
 }
 
 canvas.surface
 {
     display: block;
     position: absolute;
-    width: 2560px;
-    height: 2560px;
+    width: 100%;
+    height: 100%;
 }
 
 .canvasContainer

@@ -31,3 +31,5 @@ function hexStrToRGBA(hexStr) {
     }
     return colorObject;
 }
+
+

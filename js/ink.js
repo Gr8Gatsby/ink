@@ -11,7 +11,7 @@ function InkManager(canvas) {
         : new SignaturePad(canvas);
 
     this.manager = manager;
-    this.context = canvas;
+    this.context = canvas.getContext('2d');;
     if (this.isWRT) {
         attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
         var stroke = attrs.size;
@@ -58,7 +58,7 @@ InkManager.prototype = {
     setDefaults: function() {
         var manager = this.manager;
         var attr = manager.attrs;
-        var context = manager.context;
+        var context = this.context;
         var strokeSize = attrs.size;
         strokeSize.width = strokeSize.height = context.lineWidth;
         attrs.size = strokeSize;
@@ -135,7 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleColorChange(evt) {
-        inkManager.color = evt.srcElement.value;
+        inkManager.color = evt.currentTarget.value;
+        inkManager.context.strokeStyle = evt.currentTarget.value;
+        inkManager.setDefaults();
     }
 
     // Handle Pointer events
