@@ -11,8 +11,14 @@
             <canvas id="inkCanvas" class="surface"></canvas>
         </div>
     </div>
-    <div id="footer"><input id="inputColor" type="color" value="#fba123" /></div>
-    <script src="node_modules/signature_pad/signature_pad.js"></script>
+    <div id="footer"><input id="inputColor" list="colors" type="color" value="#fba123" /></div>
+    <datalist id="colors">
+        <option>#ff0000</option>
+        <option>#00ff00</option>
+        <option>#0000ff</option>
+        <option>#000000</option>
+    </datalist>
+    <script src="//unpkg.com/signature_pad@1.5.3"></script>
     <script src="js/utility.js"></script>
     <script src="js/ink.js"></script>
 </body>

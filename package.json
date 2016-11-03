@@ -1,9 +1,0 @@
-{
-  "name": "ink",
-  "private": true,
-  "repository": "Gr8Gatsby/ink",
-  "license": "MIT",
-  "devDependencies": {
-    "signature_pad": "^1.5.3"
-  }
-}
