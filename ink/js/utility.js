@@ -31,13 +31,3 @@ function hexStrToRGBA(hexStr) {
     }
     return colorObject;
 }
-
-function handleColorChange(evt) {
-    ink.draw.context.strokeStyle = evt.srcElement.value;
-}
-
-// Initialize
-document.addEventListener("DOMContentLoaded", function () {
-    var inputColor = document.getElementById("inputColor");
-    inputColor.addEventListener("change", handleColorChange, false);
-});
