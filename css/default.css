@@ -1,4 +1,15 @@
-﻿html {
+﻿*
+{
+    -ms-content-zooming: none;
+    touch-action: none;
+}
+
+body
+{
+    touch-action: none;
+}
+
+html {
     -ms-content-zooming: none;
     overflow: hidden;
 }
