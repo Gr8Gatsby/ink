@@ -3,17 +3,15 @@
 
 // This global variable holds a reference to the div that is imposed on top of selected ink.
 // It is used to register event handlers that allow the user to move around selected ink.
-var selBox;
-var attrs;
-var manager;
-
 function InkManager(canvas) {
     this.isWRT = typeof Windows != 'undefined';
-    manager = this.isWRT
+    var context = canvas.getContext('2d');
+    var manager = this.isWRT
         ? new Windows.UI.Input.Inking.InkManager
         : new SignaturePad(canvas);
 
     this.manager = manager;
+    this.context = canvas;
     if (this.isWRT) {
         attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
         var stroke = attrs.size;
@@ -53,6 +51,20 @@ InkManager.prototype = {
     },
     get color() {
         return this.isWRT ? this._color : this.manager.penColor;
+    },
+
+    // Change the color and width in the default (used for new strokes) to the values
+    // currently set in the current context.
+    setDefaults: function() {
+        var manager = this.manager;
+        var attr = manager.attrs;
+        var context = manager.context;
+        var strokeSize = attrs.size;
+        strokeSize.width = strokeSize.height = context.lineWidth;
+        attrs.size = strokeSize;
+        attrs.color = hexStrToRGBA(context.strokeStyle);
+        //attrs.drawAsHighlighter = context === hlContext;
+        manager.setDefaultDrawingAttributes(attrs);
     }
 };
 
@@ -60,59 +72,10 @@ InkManager.prototype = {
 document.addEventListener('DOMContentLoaded', function () {
     // helper functions
 
-    // Set the color (and alpha) of a stroke.  Return true if we actually changed it.
-    // Note that we cannot just set the color in stroke.drawingAttributes.color.
-    // The stroke API supports get and put operations for drawingAttributes,
-    // but we must execute those operations separately, and change any values
-    // inside drawingAttributes between those operations.
-    function colorStroke(stroke, color) {
-        var att = stroke.drawingAttributes;
-        var clr = toColorStruct(color);
-        if (att.color !== clr) {
-            att.color = clr;
-            stroke.drawingAttributes = att;
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     // Check to see if input is inside of the Canvas for drawing
     function inRect(x, y, rect) {
         return ((rect.x <= x) && (x < (rect.x + rect.width)) &&
                 (rect.y <= y) && (y < (rect.y + rect.height)));
-    }
-
-    function handleSelectionBoxPointerDown(evt) {
-        // Start the processing of events related to this pointer as part of a gesture.
-        // In this sample we are interested in MSGestureChange event, which we use to move selected ink.
-        // See handleSelectionBoxGestureChange event handler.
-        selBox.gestureObject.addPointer(evt.pointerId);
-    }
-
-    function handleSelectionBoxGestureChange(evt) {
-        // Move selection box
-        selBox.rect.x += evt.translationX;
-        selBox.rect.y += evt.translationY;
-        selBox.style.left = selBox.rect.x + "px";
-        selBox.style.top = selBox.rect.y + "px";
-
-        // Move selected ink
-        inkManager.moveSelected({ x: evt.translationX, y: evt.translationY });
-
-        renderAllStrokes();
-    }
-
-    // Change the color and width in the default (used for new strokes) to the values
-    // currently set in the current context.
-    function setDefaults() {
-
-        var strokeSize = attrs.size;
-        strokeSize.width = strokeSize.height = context.lineWidth;
-        attrs.size = strokeSize;
-        attrs.color = hexStrToRGBA(context.strokeStyle);
-        //attrs.drawAsHighlighter = context === hlContext;
-        manager.setDefaultDrawingAttributes(attrs);
     }
 
     // Test the array of results bounding boxes
@@ -139,28 +102,6 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.stroke();
         ctx.closePath();
         ctx.restore();
-    }
-
-    function hitTest(tx, ty) {
-        var results = inkManager.getRecognitionResults();
-        var cWords = results.size;
-        if (cWords === 0) {
-            return null;
-        }
-        for (var i = 0; i < cWords; i++) {
-            var rect = results[i].boundingRect;
-            if (inRect(tx, ty, rect)) {
-                return {
-                    index: i,
-                    handleX: tx,  // Original touch point
-                    handleY: ty,
-                    strokes: results[i].getStrokes(),
-                    rect: rect,
-                    alternates: results[i].getTextCandidates()
-                };
-            }
-        }
-        return null;
     }
 
     // Tests the array of results bounding box
@@ -222,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var pressureWidth = evt.pressure * 15;
             ink.draw.context.lineWidth = pressureWidth;
-            setDefaults();
+            inkManager.setDefaults();
 
             inkManager.processPointerDown(pt);
             penID = evt.pointerId;
@@ -281,13 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var penID = -1;
 
-    // Create a global object for managing canvases
+    // Create a object for managing canvases
     var ink = {
         draw:{
-            canvas: null,
-            context: null
-        },
-        select: { //TODO: implement the Selection Canvas
             canvas: null,
             context: null
         }
