@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // We will accept pen down or mouse left down as the start of a stroke.
     // We will accept touch down or mouse right down as the start of a touch.
     function handlePointerDown(evt) {
-        if ((evt.pointerType === "pen") || ((evt.pointerType === "mouse") && (evt.button === 0))) {
+        if ((evt.pointerType === "pen") || ((evt.pointerType === "mouse") && (evt.button === 0)) || (evt.pointerType === "touch")) {
             // Anchor and clear any current selection.
             //anchorSelection();
             var pt = { x: 0.0, y: 0.0 };
