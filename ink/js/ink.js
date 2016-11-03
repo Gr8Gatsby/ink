@@ -1,19 +1,25 @@
 ﻿// ink.js
 // This file contains the code to interact with the Windows Runtime Inking APIs
 
+// This global variable holds a reference to the div that is imposed on top of selected ink.
+// It is used to register event handlers that allow the user to move around selected ink.
+var selBox;
+var attrs;
+var manager;
+
 function InkManager(canvas) {
     this.isWRT = typeof Windows != 'undefined';
-    var manager = this.isWRT
+    manager = this.isWRT
         ? new Windows.UI.Input.Inking.InkManager
         : new SignaturePad(canvas);
 
     if (this.isWRT) {
-        var attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
+        attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
         var stroke = attrs.size;
         var context = canvas.getContext('2d');
 
         attrs.size = stroke;
-        // attrs.color = Windows.UI.Colors.black;
+        attrs.color = Windows.UI.Colors.black;
         attrs.fitToCurve = true;
         stroke.width = stroke.height = context.lineWidth;
 
@@ -64,6 +70,38 @@ document.addEventListener('DOMContentLoaded', function () {
     function inRect(x, y, rect) {
         return ((rect.x <= x) && (x < (rect.x + rect.width)) &&
                 (rect.y <= y) && (y < (rect.y + rect.height)));
+    }
+
+    function handleSelectionBoxPointerDown(evt) {
+        // Start the processing of events related to this pointer as part of a gesture.
+        // In this sample we are interested in MSGestureChange event, which we use to move selected ink.
+        // See handleSelectionBoxGestureChange event handler.
+        selBox.gestureObject.addPointer(evt.pointerId);
+    }
+
+    function handleSelectionBoxGestureChange(evt) {
+        // Move selection box
+        selBox.rect.x += evt.translationX;
+        selBox.rect.y += evt.translationY;
+        selBox.style.left = selBox.rect.x + "px";
+        selBox.style.top = selBox.rect.y + "px";
+
+        // Move selected ink
+        inkManager.moveSelected({ x: evt.translationX, y: evt.translationY });
+
+        renderAllStrokes();
+    }
+
+    // Change the color and width in the default (used for new strokes) to the values
+    // currently set in the current context.
+    function setDefaults() {
+        
+        var strokeSize = attrs.size;
+        strokeSize.width = strokeSize.height = context.lineWidth;
+        attrs.size = strokeSize;
+        attrs.color = hexStrToRGBA(context.strokeStyle);
+        //attrs.drawAsHighlighter = context === hlContext;
+        manager.setDefaultDrawingAttributes(attrs);
     }
 
     // Test the array of results bounding boxes
@@ -120,61 +158,63 @@ document.addEventListener('DOMContentLoaded', function () {
         ink.draw.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
 
         // Get all the strokes from the InkManager
-        inkManager.getStrokes().forEach(function (stroke, index, array) {
-            var rgba = hexStrToRGBA(inputColor.value);
-            var att = stroke.drawingAttributes
+        inkManager.getStrokes().forEach(function (stroke) {
+            var att = stroke.drawingAttributes;
+            var color = toColorString(att.color);
             var strokeSize = att.size;
             var width = strokeSize.width;
-
-            // Find the most recent stroke
-            if (index === (array.length - 1)) {
-                // Copy the drawingAttributes
-                att = stroke.drawingAttributes;
-                // Set the color
-                att.color = rgba;
-
-                stroke.drawingAttributes = att;
-            }
-            //var att = stroke.drawingAttributes;
-            //
-            //att.color = rgba;
-            //var color = rgba;
             var ctx = ink.draw.context;
-            //if (stroke.selected) {
-            //  renderStroke(stroke, color, width * 2, ctx);
-            //  var stripe = hl ? 'Azure' : 'White';
-            //  var w = width - (hl ? 3 : 1);
-            //  renderStroke(stroke, stripe, w, ctx);
-            //} else {
-                renderStroke(stroke, att.color, width, ctx);
-            //}
+            renderStroke(stroke, color, width, ctx);
+            
         });
     }
 
+    // Convenience function used by color converters.
+    function byteHex(num) {
+        var hex = num.toString(16);
+        if (hex.length === 1) {
+            hex = "0" + hex;
+        }
+        return hex;
+    }
+
+    function toColorString(color) {
+        return "#" + byteHex(color.r) + byteHex(color.g) + byteHex(color.b);
+    }
+
     function handleColorChange(evt) {
-        // ink.draw.context.strokeStyle = evt.srcElement.value;
+        ink.draw.context.strokeStyle = evt.srcElement.value;
     }
 
     // Handle Pointer events
     // We will accept pen down or mouse left down as the start of a stroke.
     // We will accept touch down or mouse right down as the start of a touch.
     function handlePointerDown(evt) {
-        if ((evt.pointerType === 'pen') || ((evt.pointerType === 'mouse') && (evt.button === 0))) {
-            var pt = { x: 0, y: 0 };
+        if ((evt.pointerType === "pen") || ((evt.pointerType === "mouse") && (evt.button === 0))) {
+            // Anchor and clear any current selection.
+            //anchorSelection();
+            var pt = { x: 0.0, y: 0.0 };
             inkManager.selectWithLine(pt, pt);
+
+            //clearButtonMenus();
+
             pt = evt.currentPoint;
 
-            var strokes = inkManager.getStrokes();
-            if (strokes.length > 0) {
-
+            if (pt.properties.isEraser) { // The back side of a pen, which we treat as an eraser
+                tempEraseMode();
+            } else {
+                //restoreMode();
             }
-            //context.strokeStyle = inputColor.value;
+
             context.beginPath();
             context.moveTo(pt.rawPosition.x, pt.rawPosition.y);
 
+            var pressureWidth = evt.pressure * 15;
+            ink.draw.context.lineWidth = pressureWidth;
+            setDefaults();
+
             inkManager.processPointerDown(pt);
             penID = evt.pointerId;
-
         } else if (evt.pointerType === 'touch') {
             // Start the processing of events related to this pointer as part of a gesture.
             // In this sample we are interested in MSGestureTap event, which we use to show alternates. See handleTap event handler.
@@ -201,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (evt.pointerId === penID) {
             penID = -1;
             var pt = evt.currentPoint;
-            //context.strokeStyle = inputColor.value;
+            context.strokeStyle = inputColor.value;
             context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
             context.stroke();
             context.closePath();
@@ -250,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function () {
     canvas.setAttribute('height', inkCanvas.offsetHeight);
 
     context.lineWidth = 5;
-    context.strokeStyle = '#cacaca';
+    context.strokeStyle = inputColor.value;
     context.lineCap = 'round';
     context.lineJoin = 'round';
 
