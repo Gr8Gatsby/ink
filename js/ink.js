@@ -286,10 +286,6 @@ document.addEventListener('DOMContentLoaded', function () {
         draw:{
             canvas: null,
             context: null
-        },
-        select: { //TODO: implement the Selection Canvas
-            canvas: null,
-            context: null
         }
     };
 
