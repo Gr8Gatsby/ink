@@ -105,7 +105,7 @@ function renderAllStrokes() {
     // Get all the strokes from the InkManager
     inkManager.getStrokes().forEach(function (stroke) {
         var att = stroke.drawingAttributes;
-        var color = Windows.UI.Colors.black;
+        var color = stroke.drawingAttributes.color;
         var strokeSize = att.size;
         var width = strokeSize.width;
         var hl = stroke.drawingAttributes.drawAsHighlighter;
@@ -211,7 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     ink.draw.context = ink.draw.canvas.getContext("2d");
     ink.draw.context.lineWidth = 5;
-    ink.draw.context.strokeStyle = "Black";
+    ink.draw.context.strokeStyle = "#cacaca";
     ink.draw.context.lineCap = "round";
     ink.draw.context.lineJoin = "round";
     
