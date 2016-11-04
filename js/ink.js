@@ -1,26 +1,39 @@
 ﻿// ink.js
 // This file contains the code to interact with the Windows Runtime Inking APIs
 
-// This global variable holds a reference to the div that is imposed on top of selected ink.
-// It is used to register event handlers that allow the user to move around selected ink.
 function InkManager(canvas) {
     this.isWRT = typeof Windows != 'undefined';
+
+    canvas.setAttribute('width', canvas.offsetWidth);
+    canvas.setAttribute('height', canvas.offsetHeight);
+
     var context = canvas.getContext('2d');
+    context.lineWidth = 5;
+    context.lineCap = context.lineJoin = 'round';
+
     var manager = this.isWRT
         ? new Windows.UI.Input.Inking.InkManager
         : new SignaturePad(canvas);
 
+    this.canvas = canvas;
+    this.context = context;
     this.manager = manager;
-    this.context = canvas.getContext('2d');;
-    if (this.isWRT) {
-        attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
-        var stroke = attrs.size;
-        var context = canvas.getContext('2d');
 
-        attrs.size = stroke;
+    if (this.isWRT) {
+        var attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
         attrs.color = Windows.UI.Colors.black;
         attrs.fitToCurve = true;
+
+        var stroke = attrs.size;
         stroke.width = stroke.height = context.lineWidth;
+
+        canvas.gestureObject = new MSGesture;
+        canvas.gestureObject.target = canvas;
+
+        canvas.addEventListener('pointerdown', handlePointerDown);
+        canvas.addEventListener('pointerup', handlePointerUp);
+        canvas.addEventListener('pointermove', handlePointerMove);
+        canvas.addEventListener('pointerout', handlePointerOut);
 
         manager.attrs = attrs;
         manager.mode = Windows.UI.Input.Inking.InkManipulationMode.inking;
@@ -42,35 +55,35 @@ InkManager.prototype = {
     processPointerUpdate: function() {},
     processPointerUp: function() {},
     selectWithLine: function() {},
+
     set color(value) {
         if (this.isWRT) {
-            this._color = value;
+            this.context.strokeStyle = value;
         } else {
             this.manager.penColor = value;
         }
     },
     get color() {
-        return this.isWRT ? this._color : this.manager.penColor;
+        return this.isWRT
+          ? this.context.strokeStyle
+          : this.manager.penColor;
     },
 
-    // Change the color and width in the default (used for new strokes) to the values
-    // currently set in the current context.
+    // Change the color and width in the default (used for new strokes) to the
+    // values currently set in the current context.
     setDefaults: function() {
-        var manager = this.manager;
-        var attr = manager.attrs;
-        var context = this.context;
-        var strokeSize = attrs.size;
-        strokeSize.width = strokeSize.height = context.lineWidth;
-        attrs.size = strokeSize;
-        attrs.color = hexStrToRGBA(context.strokeStyle);
-        //attrs.drawAsHighlighter = context === hlContext;
-        manager.setDefaultDrawingAttributes(attrs);
+        if (this.isWRT) {
+            var attrs = this.manager.attrs;
+            var stroke = attrs.size;
+
+            attrs.color = hexStrToRGBA(this.color);
+            stroke.width = stroke.height = this.context.lineWidth;
+            this.manager.setDefaultDrawingAttributes(attrs);
+        }
     }
 };
 
-// Setup the application.
-document.addEventListener('DOMContentLoaded', function () {
-    // helper functions
+document.addEventListener('DOMContentLoaded', function() {
 
     // Check to see if input is inside of the Canvas for drawing
     function inRect(x, y, rect) {
@@ -79,185 +92,148 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Test the array of results bounding boxes
-    // Draws a single stroke into a specified canvas 2D context, with a specified color and width.
-    function renderStroke(stroke, color, width, ctx) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
+    // Draws a single stroke into the canvas 2D context, with a specified color and width.
+    function renderStroke(stroke, color, width) {
+        var context = inkManager.context;
+        context.save();
+        context.beginPath();
+        context.strokeStyle = color;
+        context.lineWidth = width;
 
-        console.log('renderStroke: rgb color: r = ' + color.r + ' g = ' + color.g + ' b = ' + color.b);
         var first = true;
-        stroke.getRenderingSegments().forEach(function (segment) {
+        stroke.getRenderingSegments().forEach(function(segment) {
             if (first) {
-                ctx.moveTo(segment.position.x, segment.position.y);
                 first = false;
+                context.moveTo(segment.position.x, segment.position.y);
             } else {
-                ctx.bezierCurveTo(segment.bezierControlPoint1.x, segment.bezierControlPoint1.y,
-                                    segment.bezierControlPoint2.x, segment.bezierControlPoint2.y,
-                                    segment.position.x, segment.position.y);
+                context.bezierCurveTo(
+                    segment.bezierControlPoint1.x, segment.bezierControlPoint1.y,
+                    segment.bezierControlPoint2.x, segment.bezierControlPoint2.y,
+                    segment.position.x, segment.position.y
+                );
             }
         });
 
-        ctx.stroke();
-        ctx.closePath();
-        ctx.restore();
+        context.stroke();
+        context.closePath();
+        context.restore();
     }
 
     // Tests the array of results bounding box
     function renderAllStrokes() {
         // Clear the last context
-        ink.draw.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
+        inkManager.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
 
         // Get all the strokes from the InkManager
-        inkManager.getStrokes().forEach(function (stroke) {
-            var att = stroke.drawingAttributes;
-            var color = toColorString(att.color);
-            var strokeSize = att.size;
-            var width = strokeSize.width;
-            var ctx = ink.draw.context;
-            renderStroke(stroke, color, width, ctx);
-
+        inkManager.getStrokes().forEach(function(stroke) {
+            var attrs = stroke.drawingAttributes;
+            renderStroke(stroke, toColorString(attrs.color), attrs.size.width);
         });
     }
 
     // Convenience function used by color converters.
     function byteHex(num) {
         var hex = num.toString(16);
-        if (hex.length === 1) {
-            hex = "0" + hex;
-        }
-        return hex;
+        return (hex.length === 1 ?  '0' : '') + hex;
     }
 
     function toColorString(color) {
-        return "#" + byteHex(color.r) + byteHex(color.g) + byteHex(color.b);
+        return '#' + byteHex(color.r) + byteHex(color.g) + byteHex(color.b);
     }
 
-    function handleColorChange(evt) {
-        inkManager.color = evt.currentTarget.value;
-        inkManager.context.strokeStyle = evt.currentTarget.value;
+    function handleColorChange(event) {
+        inkManager.color = event.currentTarget.value;
         inkManager.setDefaults();
     }
 
     // Handle Pointer events
     // We will accept pen down or mouse left down as the start of a stroke.
     // We will accept touch down or mouse right down as the start of a touch.
-    function handlePointerDown(evt) {
-        if ((evt.pointerType === "pen") || ((evt.pointerType === "mouse") && (evt.button === 0)) || (evt.pointerType === "touch")) {
+    function handlePointerDown(event) {
+        if ((event.pointerType === 'pen') ||
+                (event.pointerType === 'mouse' && event.button === 0) ||
+                    (event.pointerType === 'touch')
+                ) {
+            penID = event.pointerId;
+
             // Anchor and clear any current selection.
             //anchorSelection();
-            var pt = { x: 0.0, y: 0.0 };
-            inkManager.selectWithLine(pt, pt);
+            var context = inkManager.context;
+            var point = { x: 0, y: 0 };
 
-            //clearButtonMenus();
-
-            pt = evt.currentPoint;
-
-            if (pt.properties.isEraser) { // The back side of a pen, which we treat as an eraser
-                tempEraseMode();
-            } else {
-                //restoreMode();
-            }
-
+            inkManager.selectWithLine(point, point);
             context.beginPath();
-            context.moveTo(pt.rawPosition.x, pt.rawPosition.y);
 
-            var pressureWidth = evt.pressure * 15;
-            ink.draw.context.lineWidth = pressureWidth;
+            point = event.currentPoint;
+            context.moveTo(point.rawPosition.x, point.rawPosition.y);
+
+            inkManager.context.lineWidth = event.pressure * 15;
             inkManager.setDefaults();
-
-            inkManager.processPointerDown(pt);
-            penID = evt.pointerId;
-        } else if (evt.pointerType === 'touch') {
+            inkManager.processPointerDown(point);
+        }
+        else if (event.pointerType === 'touch' && inkManager.canvas.gestureObject) {
             // Start the processing of events related to this pointer as part of a gesture.
             // In this sample we are interested in MSGestureTap event, which we use to show alternates. See handleTap event handler.
-            ink.draw.canvas.gestureObject.addPointer(evt.pointerId);
+            inkManager.canvas.gestureObject.addPointer(event.pointerId);
         }
     }
 
-    function handlePointerMove(evt) {
-        if (evt.pointerId === penID) {
-            var pt = evt.currentPoint;
-            context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
+    function handlePointerMove(event) {
+        if (event.pointerId === penID) {
+            var context = inkManager.context;
+            var point = event.currentPoint;
+
+            context.lineTo(point.rawPosition.x, point.rawPosition.y);
             context.stroke();
             // Get all the points we missed and feed them to inkManager.
-            // The array pts has the oldest point in position length-1; the most recent point is in position 0.
-            // Actually, the point in position 0 is the same as the point in pt above (returned by evt.currentPoint).
-            var pts = evt.intermediatePoints;
-            for (var i = pts.length - 1; i >= 0 ; i--) {
-                inkManager.processPointerUpdate(pts[i]);
+            // The array points has the oldest point in position length-1; the most recent point is in position 0.
+            // Actually, the point in position 0 is the same as the point in point above (returned by event.currentPoint).
+            var points = event.intermediatePoints;
+            for (var index = points.length - 1; index >= 0; index--) {
+                inkManager.processPointerUpdate(points[index]);
             }
         }
     }
 
-    function handlePointerUp(evt) {
-        if (evt.pointerId === penID) {
+    function handlePointerUp(event) {
+        if (event.pointerId === penID) {
             penID = -1;
-            var pt = evt.currentPoint;
+            var context = inkManager.context;
+            var point = event.currentPoint;
+
             context.strokeStyle = inkManager.color;
-            context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
+            context.lineTo(point.rawPosition.x, point.rawPosition.y);
             context.stroke();
             context.closePath();
 
-            var rect = inkManager.processPointerUp(pt);
-            if (inkManager.mode === Windows.UI.Input.Inking.InkManipulationMode.selecting) {
-                detachSelection(rect);
-            }
             renderAllStrokes();
         }
     }
 
     // We treat the event of the pen leaving the canvas as the same as the pen lifting;
     // it completes the stroke.
-    function handlePointerOut(evt) {
-        if (evt.pointerId === penID) {
-            var pt = evt.currentPoint;
-            context.lineTo(pt.rawPosition.x, pt.rawPosition.y);
+    function handlePointerOut(event) {
+        if (event.pointerId === penID) {
+            penID = -1;
+            var context = inkManager.context;
+            var point = event.currentPoint;
+
+            context.lineTo(point.rawPosition.x, point.rawPosition.y);
             context.stroke();
             context.closePath();
-            inkManager.processPointerUp(pt);
-            penID = -1;
+
+            inkManager.processPointerUp(point);
             renderAllStrokes();
         }
     }
 
     var penID = -1;
-
-    // Create a object for managing canvases
-    var ink = {
-        draw:{
-            canvas: null,
-            context: null
-        }
-    };
-
     var canvas = document.getElementById('inkCanvas');
     var context = canvas.getContext('2d');
-    var inputColor = document.getElementById('inputColor');
-
-    canvas.setAttribute('width', inkCanvas.offsetWidth);
-    canvas.setAttribute('height', inkCanvas.offsetHeight);
-
-    context.lineWidth = 5;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-
-    ink.draw.canvas = canvas;
-    ink.draw.context = context;
 
     var inkManager = new InkManager(canvas);
+    var inputColor = document.getElementById('inputColor');
+
     inkManager.color = inputColor.value;
-    inkManager.context.strokeStyle = inkManager.color;
-
-    // Initialize the drawing canvas
-    canvas.gestureObject = inkManager.isWRT ? new MSGesture : {};
-    canvas.gestureObject.target = ink.draw.canvas;
-
-    // Listeners.
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerout', handlePointerOut);
     inputColor.addEventListener('change', handleColorChange);
 });
