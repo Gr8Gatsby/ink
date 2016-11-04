@@ -13,40 +13,50 @@ function InkManager(canvas) {
 
     var manager = this.isWRT
         ? new Windows.UI.Input.Inking.InkManager
-        : new SignaturePad(canvas);
+        : new SignaturePad(canvas, { backgroundColor: 'white' });
 
     this.canvas = canvas;
     this.context = context;
     this.manager = manager;
 
-    if (this.isWRT) {
-        var attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
-        attrs.color = Windows.UI.Colors.black;
-        attrs.fitToCurve = true;
-
-        var stroke = attrs.size;
-        stroke.width = stroke.height = context.lineWidth;
-
-        canvas.gestureObject = new MSGesture;
-        canvas.gestureObject.target = canvas;
-
-        canvas.addEventListener('pointerdown', handlePointerDown);
-        canvas.addEventListener('pointerup', handlePointerUp);
-        canvas.addEventListener('pointermove', handlePointerMove);
-        canvas.addEventListener('pointerout', handlePointerOut);
-
-        manager.attrs = attrs;
-        manager.mode = Windows.UI.Input.Inking.InkManipulationMode.inking;
-        manager.setDefaultDrawingAttributes(attrs);
-
-        this.getRecognitionResults = manager.getRecognitionResults.bind(manager);
-        this.getStrokes = manager.getStrokes.bind(manager);
-        this.processPointerDown = manager.processPointerDown.bind(manager);
-        this.processPointerUpdate = manager.processPointerUpdate.bind(manager);
-        this.processPointerUp = manager.processPointerUp.bind(manager);
-        this.selectWithLine = manager.selectWithLine.bind(manager);
+    if (!this.isWRT) {
+        // Wrap to force stroke width
+        var _drawCurve = manager._drawCurve;
+        manager._drawCurve = function(curve, startWidth, endWidth) {
+            var pressure = 0.1;
+            var width = pressure * InkManager.PRESSURE_MULTIPLIER;
+            return _drawCurve.call(this, curve, width, width);
+        };
+        return;
     }
+    var attrs = new Windows.UI.Input.Inking.InkDrawingAttributes;
+    attrs.color = Windows.UI.Colors.black;
+    attrs.fitToCurve = true;
+
+    var stroke = attrs.size;
+    stroke.width = stroke.height = context.lineWidth;
+
+    canvas.gestureObject = new MSGesture;
+    canvas.gestureObject.target = canvas;
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerout', handlePointerOut);
+
+    manager.attrs = attrs;
+    manager.mode = Windows.UI.Input.Inking.InkManipulationMode.inking;
+    manager.setDefaultDrawingAttributes(attrs);
+
+    this.getRecognitionResults = manager.getRecognitionResults.bind(manager);
+    this.getStrokes = manager.getStrokes.bind(manager);
+    this.processPointerDown = manager.processPointerDown.bind(manager);
+    this.processPointerUpdate = manager.processPointerUpdate.bind(manager);
+    this.processPointerUp = manager.processPointerUp.bind(manager);
+    this.selectWithLine = manager.selectWithLine.bind(manager);
 }
+
+InkManager.PRESSURE_MULTIPLIER = 15;
 
 InkManager.prototype = {
     getRecognitionResults: function() { return []; },
@@ -167,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
             point = event.currentPoint;
             context.moveTo(point.rawPosition.x, point.rawPosition.y);
 
-            inkManager.context.lineWidth = event.pressure * 15;
+            inkManager.context.lineWidth = event.pressure * InkManager.PRESSURE_MULTIPLIER;
             inkManager.setDefaults();
             inkManager.processPointerDown(point);
         }
