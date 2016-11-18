@@ -39,11 +39,6 @@ function InkManager(canvas) {
     canvas.gestureObject = new MSGesture;
     canvas.gestureObject.target = canvas;
 
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerout', handlePointerOut);
-
     manager.attrs = attrs;
     manager.mode = Windows.UI.Input.Inking.InkManipulationMode.inking;
     manager.setDefaultDrawingAttributes(attrs);
@@ -245,5 +240,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var inputColor = document.getElementById('inputColor');
 
     inkManager.color = inputColor.value;
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerout', handlePointerOut);
+
     inputColor.addEventListener('change', handleColorChange);
 });
