@@ -90,12 +90,6 @@ InkManager.prototype = {
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Check to see if input is inside of the Canvas for drawing
-    function inRect(x, y, rect) {
-        return ((rect.x <= x) && (x < (rect.x + rect.width)) &&
-                (rect.y <= y) && (y < (rect.y + rect.height)));
-    }
-
     // Test the array of results bounding boxes
     // Draws a single stroke into the canvas 2D context, with a specified color and width.
     function renderStroke(stroke, color, width) {
@@ -126,8 +120,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Tests the array of results bounding box
     function renderAllStrokes() {
+        var canvas = inkManager.canvas;
+
         // Clear the last context
-        inkManager.context.clearRect(0, 0, inkCanvas.width, inkCanvas.height);
+        inkManager.context.clearRect(0, 0, canvas.width, canvas.height);
 
         // Get all the strokes from the InkManager
         inkManager.getStrokes().forEach(function(stroke) {
@@ -233,18 +229,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var penID = -1;
+
     var canvas = document.getElementById('inkCanvas');
-    var context = canvas.getContext('2d');
-
-    var inkManager = new InkManager(canvas);
-    var inputColor = document.getElementById('inputColor');
-
-    inkManager.color = inputColor.value;
-
     canvas.addEventListener('pointerdown', handlePointerDown);
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointermove', handlePointerMove);
     canvas.addEventListener('pointerout', handlePointerOut);
 
+    var inputColor = document.getElementById('inputColor');
     inputColor.addEventListener('change', handleColorChange);
+
+    var inkManager = new InkManager(canvas);
+    inkManager.color = inputColor.value;
 });
